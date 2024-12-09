@@ -1,0 +1,52 @@
+# Build folders
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider project files
+.idea/
+*.sln.iml
+
+# Logs
+*.log
+
+# Docker-related files
+docker-compose.override.yml
+docker-compose.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Visual Studio Code
+.vscode/
+
+# NuGet Packages
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+
+# Entity Framework migrations
+Migrations/
+
+# App settings
+appsettings.Development.json
+
+# Other generated files
+*.pdb
+*.dll
+*.exe
+*.db
+*.gz
+*.min.js
+*.min.css
+*.map
+
+wwwroot/lib/
+.vscode/
