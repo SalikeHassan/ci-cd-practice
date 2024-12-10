@@ -1,4 +1,4 @@
-name: Deploy to ACI
+name: Build, Push, and Deploy to ACI
 
 on:
   push:
@@ -6,16 +6,9 @@ on:
       - main
   workflow_dispatch:
 
-env:
-  RESOURCE_GROUP: github-action-1
-  ACI_NAME: acrassignment1
-  ACR_NAME: acrassignment1
-  IMAGE_NAME: acrassignment1.azurecr.io/mydotnetapp:latest
-  DNS_LABEL: mydotnetapp
-
 jobs:
-  deploy-to-aci:
-    name: Deploy App to ACI
+  build-and-push:
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
 
     steps:
@@ -23,38 +16,70 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Login to Azure
+      # Step 2: Login to Azure using the Service Principal
       - name: Login to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Step 3: Delete existing ACI instance
-      - name: Delete Existing ACI
+      # Step 3: Login to ACR using Service Principal
+      - name: Login to Azure Container Registry
         run: |
-          az container delete \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name ${{ env.ACI_NAME }} \
-            --yes || echo "No existing container to delete."
+          SP_CREDENTIALS=${{ secrets.AZURE_CREDENTIALS }}
+          CLIENT_ID=$(echo $SP_CREDENTIALS | jq -r '.clientId')
+          CLIENT_SECRET=$(echo $SP_CREDENTIALS | jq -r '.clientSecret')
+          TENANT_ID=$(echo $SP_CREDENTIALS | jq -r '.tenantId')
+          ACR_LOGIN_SERVER=$(echo $SP_CREDENTIALS | jq -r '.acrLoginServer')
 
-      # Step 4: Create ACI instance with updated image
-      - name: Create ACI with updated image
+          az acr login --name $ACR_LOGIN_SERVER --username $CLIENT_ID --password $CLIENT_SECRET
+
+      # Step 4: Build the Docker image
+      - name: Build Docker Image
         run: |
+          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/mydotnetapp:${{ github.sha }} -f MyDotNetApp/Dockerfile MyDotNetApp
+
+      # Step 5: Push the Docker image to ACR
+      - name: Push Docker Image to ACR
+        run: |
+          docker push ${{ secrets.ACR_NAME }}.azurecr.io/mydotnetapp:${{ github.sha }}
+
+  deploy-aci:
+    name: Deploy to ACI
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      # Step 1: Login to Azure using the Service Principal
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Step 2: Deploy the image to ACI
+      - name: Deploy ACI with updated image
+        run: |
+          SP_CREDENTIALS=${{ secrets.AZURE_CREDENTIALS }}
+          CLIENT_ID=$(echo $SP_CREDENTIALS | jq -r '.clientId')
+          CLIENT_SECRET=$(echo $SP_CREDENTIALS | jq -r '.clientSecret')
+          TENANT_ID=$(echo $SP_CREDENTIALS | jq -r '.tenantId')
+          ACR_LOGIN_SERVER=$(echo $SP_CREDENTIALS | jq -r '.acrLoginServer')
+
           az container create \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name ${{ env.ACI_NAME }} \
-            --image ${{ env.IMAGE_NAME }} \
-            --dns-name-label ${{ env.DNS_LABEL }} \
+            --resource-group github-action-1 \
+            --name acrassignment1 \
+            --image $ACR_LOGIN_SERVER/mydotnetapp:latest \
+            --dns-name-label acrassignment1 \
             --ports 5000 \
             --cpu 1 \
             --memory 1 \
-            --environment-variables ASPNETCORE_ENVIRONMENT=Development
+            --registry-login-server $ACR_LOGIN_SERVER \
+            --registry-username $CLIENT_ID \
+            --registry-password $CLIENT_SECRET
 
-      # Step 5: Output Public URL
+      # Step 3: Output Public URL of the ACI
       - name: Output Public URL
         run: |
-          ACI_IP=$(az container show \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name ${{ env.ACI_NAME }} \
-            --query "ipAddress.ip" -o tsv)
-          echo "Your application is running at http://$ACI_IP:5000"
+          az container show \
+            --resource-group github-action-1 \
+            --name acrassignment1 \
+            --query "ipAddress.fqdn" -o tsv
