@@ -1,4 +1,4 @@
-name: Build and Push Docker Image to ACR
+name: Deploy to ACI
 
 on:
   push:
@@ -6,9 +6,16 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  RESOURCE_GROUP: github-action-1
+  ACI_NAME: acrassignment1
+  ACR_NAME: acrassignment1
+  IMAGE_NAME: acrassignment1.azurecr.io/mydotnetapp:latest
+  DNS_LABEL: mydotnetapp
+
 jobs:
-  build-and-push:
-    name: Build and Push Docker Image
+  deploy-to-aci:
+    name: Deploy App to ACI
     runs-on: ubuntu-latest
 
     steps:
@@ -16,49 +23,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Login to Azure using the Azure CLI
+      # Step 2: Login to Azure
       - name: Login to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Step 3: Login to ACR
-      - name: Login to Azure Container Registry
-        run: az acr login --name ${{ secrets.ACR_NAME }}
-
-      # Step 4: Build the Docker image (fixed path)
-      - name: Build Docker Image
+      # Step 3: Update ACI to use the new Docker image
+      - name: Update ACI with new image
         run: |
-          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/mydotnetapp:${{ github.sha }} -f MyDotNetApp/Dockerfile MyDotNetApp
+          az container update \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.ACI_NAME }} \
+            --image ${{ env.IMAGE_NAME }}
 
-      # Step 5: Push the Docker image to ACR
-      - name: Push Docker Image to ACR
+      # Step 4: Show ACI details (to confirm deployment and get public IP)
+      - name: Get ACI Details
         run: |
-          docker push ${{ secrets.ACR_NAME }}.azurecr.io/mydotnetapp:${{ github.sha }}
-  
-  deploy-aci:
-    name: Verify ACI Login
-    runs-on: ubuntu-latest
-    needs: build-and-push
+          az container show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.ACI_NAME }} \
+            --query "{State:provisioningState, IPAddress:ipAddress.ip}" \
+            -o table
 
-    steps:
-      # Step 1: Login to Azure using the Service Principal for ACI
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
-      - name: Install Kubectl
+      # Step 5: Output Public IP for browsing
+      - name: Output Public URL
         run: |
-          az aks install-cli
-
-      - name: Deploy to ACI
-        run: |
-          kubectl apply -f ./k8s-manifests/deployment.yml
-      # Step 2: Verify ACI instance details
-     # - name: Verify ACI
-       # run: |
-        #  az container show \
-          #  --resource-group github-action-1 \
-          #  --name acrassignment1 \
-         #   --query "{Name:name, State:provisioningState, IPAddress:ipAddress.ip}" -o table
+          ACI_IP=$(az container show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.ACI_NAME }} \
+            --query "ipAddress.ip" -o tsv)
+          echo "Your application is running at http://$ACI_IP:5000"
