@@ -53,5 +53,5 @@ jobs:
         run: |
           az container show \
             --resource-group github-action-1 \
-            --name aciassignment1 \
+            --name acrassignment1 \
             --query "{Name:name, State:provisioningState, IPAddress:ipAddress.ip}" -o table
