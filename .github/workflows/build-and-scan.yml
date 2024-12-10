@@ -29,24 +29,28 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Step 3: Update ACI to use the new Docker image
-      - name: Update ACI with new image
+      # Step 3: Delete existing ACI instance
+      - name: Delete Existing ACI
         run: |
-          az container update \
+          az container delete \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --name ${{ env.ACI_NAME }} \
-            --image ${{ env.IMAGE_NAME }}
+            --yes || echo "No existing container to delete."
 
-      # Step 4: Show ACI details (to confirm deployment and get public IP)
-      - name: Get ACI Details
+      # Step 4: Create ACI instance with updated image
+      - name: Create ACI with updated image
         run: |
-          az container show \
+          az container create \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --name ${{ env.ACI_NAME }} \
-            --query "{State:provisioningState, IPAddress:ipAddress.ip}" \
-            -o table
+            --image ${{ env.IMAGE_NAME }} \
+            --dns-name-label ${{ env.DNS_LABEL }} \
+            --ports 5000 \
+            --cpu 1 \
+            --memory 1 \
+            --environment-variables ASPNETCORE_ENVIRONMENT=Development
 
-      # Step 5: Output Public IP for browsing
+      # Step 5: Output Public URL
       - name: Output Public URL
         run: |
           ACI_IP=$(az container show \
