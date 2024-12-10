@@ -54,8 +54,7 @@ jobs:
 
       - name: Deploy to ACI
         run: |
-          kubectl apply -f k8s-manifests/deployment.yml
-
+          kubectl apply -f ./k8s-manifests/deployment.yml
       # Step 2: Verify ACI instance details
      # - name: Verify ACI
        # run: |
