@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydotnetapp-deployment
+  labels:
+    app: mydotnetapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mydotnetapp
+  template:
+    metadata:
+      labels:
+        app: mydotnetapp
+    spec:
+      containers:
+      - name: mydotnetapp
+        image: acrassignment1.azurecr.io/mydotnetapp:latest
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mydotnetapp-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: mydotnetapp
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5000
