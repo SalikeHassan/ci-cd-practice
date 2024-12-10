@@ -46,7 +46,7 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_VERIFICATION_SP }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Step 2: Verify ACI instance details
       - name: Verify ACI
