@@ -47,11 +47,19 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Install Kubectl
+        run: |
+          az aks install-cli
+
+      - name: Deploy to ACI
+        run: |
+          kubectl apply -f k8s-manifests/deployment.yml
 
       # Step 2: Verify ACI instance details
-      - name: Verify ACI
-        run: |
-          az container show \
-            --resource-group github-action-1 \
-            --name acrassignment1 \
-            --query "{Name:name, State:provisioningState, IPAddress:ipAddress.ip}" -o table
+     # - name: Verify ACI
+       # run: |
+        #  az container show \
+          #  --resource-group github-action-1 \
+          #  --name acrassignment1 \
+         #   --query "{Name:name, State:provisioningState, IPAddress:ipAddress.ip}" -o table
