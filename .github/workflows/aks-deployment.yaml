@@ -8,7 +8,7 @@ on:
 
 env:
   ACR_LOGON_SERVER: ${{ secrets.ACR_NAME }}.azurecr.io
-  IMAGE_NAME: ${{ secrets.ACR_NAME }}.azurecr.io/mydotnetapp:${{ github.sha }}
+  IMAGE_NAME: ${{ secrets.ACR_NAME }}.azurecr.io/mydotnetapp:${{ github.sha }} -f MyDotNetApp/Dockerfile MyDotNetApp
 
 jobs:
     build-deploy-image:
